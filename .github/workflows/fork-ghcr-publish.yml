@@ -4,11 +4,14 @@ name: Build & Publish Docker Image (fork → GHCR)
 # (evoapicloud/*) with org secrets a fork doesn't have; this one pushes to the
 # fork's own GHCR namespace using the built-in GITHUB_TOKEN — no secrets.
 #
-# Tags: main → :latest + :sha-<sha7>; any other branch → :<branch-slug> + :sha-<sha7>.
+# Tags:
+#   git tag v1.1.0-rtm.1 → :1.1.0-rtm.1 + :latest   (use these in the compose)
+#   push to main         → :main + :sha-<sha7>      (rolling, for testing)
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -43,11 +46,10 @@ jobs:
         run: |
           IMAGE="ghcr.io/${REPO,,}"
           SHA_SHORT="${GH_SHA:0:7}"
-          if [[ "${GH_REF_NAME}" == "main" ]]; then
-            TAGS="${IMAGE}:latest,${IMAGE}:sha-${SHA_SHORT}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAGS="${IMAGE}:${GH_REF_NAME#v},${IMAGE}:latest"
           else
-            SLUG="$(echo "${GH_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's#[^a-z0-9._-]#-#g')"
-            TAGS="${IMAGE}:${SLUG},${IMAGE}:sha-${SHA_SHORT}"
+            TAGS="${IMAGE}:main,${IMAGE}:sha-${SHA_SHORT}"
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
 
